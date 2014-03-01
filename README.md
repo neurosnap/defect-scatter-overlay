@@ -17,7 +17,10 @@ table of data is defined: columns and rows.  Once the number of columns and rows
 as well as the image resolution, scatterGrid() does the rest of the leg-work, 
 separating data by section as well as filtering data by section.
 
-#### Demo - demo.php
+#### Demo -- ./demo.php
+
+Quick and dirty demo with some faked data, realistically the data will come from a database.
+Simply pull the repository down into a webserver, and point to the demo page to see the magic.
 
 #### [Live Demo](http://nysus.net/erb/defect-scatter-overlay/demo.php)
 
