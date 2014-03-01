@@ -1,4 +1,4 @@
-Nysus' Defect Collection Scatter Plot Overlay
+Nysus' Defect Collection Scatter Overlay
 ================
 
 The purpose of this utility is to apply defects as points (in x, y coordinates)
