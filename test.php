@@ -16,8 +16,8 @@ $columns = 5;
 $rows = 5;
 $num_parts = 1477;
 
-$filter_selections = array(array("column" => 2, "row" => 2));
-//$filter_selections = array();
+//$filter_selections = array(array("column" => 2, "row" => 2));
+$filter_selections = array();
 
 //include classes
 require_once(implode(DIRECTORY_SEPARATOR, array($root, "scatterImg.0.0.1.php")));
