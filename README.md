@@ -21,6 +21,12 @@ separating data by section as well as filtering data by section.
 
 #### [Live Demo](http://nysus.net/erb/defect-scatter-overlay/demo.php)
 
+Pre-Reqs
+=======
+
+ *  PHP
+ *  GD Library
+
 Credits
 =======
 
