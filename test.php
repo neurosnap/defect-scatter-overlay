@@ -16,52 +16,45 @@ $columns = 5;
 $rows = 5;
 $num_parts = 1477;
 
-$resize_image = array("height" => 450);
+$filter_selections = array(array("column" => 2, "row" => 2));
+//$filter_selections = array();
 
-//$filter_selections = array(array("column" => 2, "row" => 2));
-$filter_selections = array();
-
+//include classes
 require_once(implode(DIRECTORY_SEPARATOR, array($root, "scatterImg.0.0.1.php")));
 require_once(implode(DIRECTORY_SEPARATOR, array($root, "scatterGrid.0.0.1.php")));
 
-//  $data = (Associative Array) with the following keys: "area_x" (Int), "area_y" (Int), and "description" (String)
-//  $dir_n_file = (String) path/filename/extension of image
-//  $descriptions = (Array of Strings) of the defect descriptions
-//  $image_resolution = (Associative Array) containing "height" (Int) and "width" (Int) that will resize the image
-$scImg = new scatterImg($data, 
-                        $image_location, 
-                        $descriptions, 
-                        $resize_image);
+//Resize image
+require_once(implode(DIRECTORY_SEPARATOR, array($root, "gen", "resizeImage.php")));
+$image_resource = resizeImage(imagecreatefromjpeg($image_location), false, 450);
+$img_width = imagesx($image_resource);
+$img_height = imagesy($image_resource);
 
-// $image_res = (Associative Array) with the following keys: "width" (Int) and "height" (Int) for
-//              dimensions of image
-// $columns = (Int) number of columns for grid overlay
-// $rows = (Int) number of rows for grid overlay
-// $total_parts = (Int) total number of parts being overlayed on image, required for Defects Per Unit calc
-// $filter_selections = (Array of Associative Arrays) tells the grid system to only count up and display totals for 
-//                      sections in this array
-$scGrid = new scatterGrid($scImg->getImageResolution(), 
-                          $columns, 
-                          $rows, 
-                          $num_parts,
-                          $filter_selections);
+$scImg = new scatterImg($data, $descriptions);
+$scGrid = new scatterGrid($img_width, $img_height, $data, $columns, $rows, $filter_selections);
+
+$image_resource = $scImg->generateDefectImage($image_resource, $scGrid);
+$image_resource = $scGrid->displayGridAndTotals($image_resource, $num_parts);
    
-$res = '<div><img style="float: left;" src="data:image/jpeg;charset=utf-8;base64,' . $scImg->getImage($scGrid) . '">';
+$res = '<div><img style="float: left;" src="data:image/jpeg;charset=utf-8;base64,' . $scImg->imgToBase64($image_resource) . '">';
 
 $color_map = $scImg->getFinalColorMap();
 
 $res .= '<table border="1" cellpadding="15" cellspacing="10" style="float: right;">';
 
-for ($j = 0; $j < count($color_map); $j++) {
+if (isset($color_map) && count($color_map) > 0) {
 
-  $color = $scImg->getColor($color_map[$j]["color"]);
-  $RGB_CSS = "rgb(" . $color["red"] . ", " . $color["green"] . ", " . $color["blue"] . ")";
+  for ($j = 0; $j < count($color_map); $j++) {
 
-  $res .= '<tr>
-            <td>' . $color_map[$j]["defect"] . '</td>
-            <td>' . $color_map[$j]["color"] . '</td>
-            <td style="background-color:' . $RGB_CSS . '">&nbsp;&nbsp;&nbsp;&nbsp;</td>
-          </tr>';
+    $color = $scImg->getColor($color_map[$j]["color"]);
+    $RGB_CSS = "rgb(" . $color["red"] . ", " . $color["green"] . ", " . $color["blue"] . ")";
+
+    $res .= '<tr>
+              <td>' . $color_map[$j]["defect"] . '</td>
+              <td>' . $color_map[$j]["color"] . '</td>
+              <td style="background-color:' . $RGB_CSS . '">&nbsp;&nbsp;&nbsp;&nbsp;</td>
+            </tr>';
+
+  }
 
 }
 

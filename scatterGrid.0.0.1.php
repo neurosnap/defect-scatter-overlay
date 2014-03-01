@@ -2,6 +2,8 @@
 
   class scatterGrid {
 
+    private $image_resource;
+
     private $section_columns;
     private $section_rows;
 
@@ -18,25 +20,28 @@
 
     private $filter_selections;
 
-    // $image_res = (Associative Array) with the following keys: "width" (Int) and "height" (Int) for
-    //              dimensions of image
+    // $image_width = (Int) Width of image
+    // $image_height = (Int) Height of image
+    // $data = (Associative Array) with the following keys: "area_x" => (Int), "area_y" => (Int), and "description" => (String)
     // $columns = (Int) number of columns for grid overlay
     // $rows = (Int) number of rows for grid overlay
     // $total_parts = (Int) total number of parts being overlayed on image, required for Defects Per Unit calc
     // $filter_selections = (Array of Associative Arrays) tells the grid system to only count up and display totals for 
     //                      sections in this array, expects array("column" => (Int), "row" => (Int))
-    public function __construct ($image_res = array(), $columns = 5, $rows = 5, $total_parts = false, $filter_selections = array()) {
+    public function __construct ($image_width, $image_height, $data, $columns = 5, $rows = 5, $total_parts = false, $filter_selections = array()) {
 
-      if (count($image_res) === 0)
-        die("Error scatterGrid needs the image resolution");
+      //PHP GD library required to generate a scatter plot
+      if (!in_array('gd', get_loaded_extensions()))
+        die("Error libgd is not loaded");
 
-      if (!is_int($image_res["width"]) || !is_int($image_res["height"])) {
-        die("Error scatterGrid was not supplied integers in image resolution array,
-            width: " . $image_res["width"] . ", height: " . $image_res["height"]);
-      }
+      if (!$data)
+        die('Error no data selected!');
 
       if (!is_int($columns) || !is_int($rows))
         die("Error scatterGrid was not supplied integers, columns: " . (string) $columns . ", rows: " . (string) $rows);
+
+      //$this->image_resource = $image_resource;
+      $this->data = $data;
 
       //required for DPU calculation
       if ($total_parts && $total_parts !== 0)
@@ -45,11 +50,11 @@
       $this->section_columns = $columns;
       $this->section_rows = $rows;
 
-      $this->image_width = $image_res["width"];
-      $this->image_height = $image_res["height"];
+      $this->section_width = $image_width / $this->section_columns;
+      $this->section_height = $image_height / $this->section_rows;
 
-      $this->section_width = $this->image_width / $this->section_columns;
-      $this->section_height = $this->image_height / $this->section_rows;
+      $this->image_width = $image_width;
+      $this->image_height = $image_height;
 
       //total points recorded by section
       $this->totals_by_section = array();
@@ -59,7 +64,10 @@
 
     }
 
-    public function displayGridAndTotals($image_resource, $total_defects) {
+    public function displayGridAndTotals($image_resource, $total_parts = false) {
+
+      if (get_resource_type($image_resource) !== "gd")
+        die("image_res is not a GD image resource.");
 
       //set thickness for grid lines
       imagesetthickness($image_resource, 2);
@@ -93,14 +101,14 @@
           if ($section_total == 0)
             continue;
 
-          if ($section_total >= $total_defects * .10) {
+          if ($section_total >= count($this->data) * .10) {
             $color = $red;
           } else {
             $color = $gray;
           }
 
-          if ($this->total_parts) {
-            $text = $section_total . " DPU " . number_format($section_total / $this->total_parts, 2);
+          if ($total_parts) {
+            $text = $section_total . " DPU " . number_format($section_total / $total_parts, 2);
           } else {
             $text = $section_total;
           }
@@ -145,17 +153,6 @@
     public function getSection ($x_coord, $y_coord) {
 
       $this->errorCheckCoords($x_coord, $y_coord);
-
-      /*$column = floor($x_coord / $this->section_width);
-      $row = floor($y_coord / $this->section_height);
-
-      if ($column < 1)
-        $column = 1;
-
-      if ($row < 1)
-        $row = 1;
-      
-      return array("column" => $column, "row" => $row);*/
 
       for ($column = 1; $column <= $this->section_columns; $column++) {
 
@@ -296,6 +293,36 @@
       return array("width" => $this->section_width, "height" => $this->section_height);
     }
 
+    public function imgToBase64($image_resource = false) {
+
+      if (get_resource_type($image_resource) !== "gd")
+        die("image_res is not a GD image resource.");
+
+      //Turn on output buffering
+      ob_start();
+
+      $test = imagejpeg($image_resource);
+
+      if (!$test) {
+        die('Image resource did not work!');
+      }
+
+      $image_data = ob_get_contents();
+
+
+      //Turn off output buffering
+      ob_end_clean();
+
+      //Convert to base64 so inject inside an HTML image tag
+      $img_base64 = base64_encode($image_data);
+
+      //Remove images created in memory
+      //imagedestroy($this->image_resource);
+
+      return $img_base64;
+
+    }
+
     private function errorCheckCoords ($x_coord, $y_coord) {
 
       $trace = debug_backtrace();
@@ -303,13 +330,6 @@
 
       if (!is_int($x_coord) || !is_int($y_coord))
         die("Error " . $function . " was not supplied integers, x_coord: " . $x_coord . ", y_coord: " . $y_coord);
-      
-      if ($x_coord > $this->image_width || $y_coord > $this->image_height) {
-
-        //die("Error " . $function . " x (" . $x_coord . ") or y (" . $y_coord . ") 
-        //    exceeds width (" . $this->image_width . ") or height (" . $this->image_height . ")");
-      
-      }
 
       if ($x_coord < 0 || $y_coord < 0)
         die("Error " . $function . " column or row is less than zero");

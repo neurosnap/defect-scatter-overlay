@@ -4,15 +4,14 @@
 
     private $data;
     private $full_path;
-    private $path_parts;
 
     private $color_ref;
     private $final_color_map;
 
     private $descriptions;
 
-    private $image_width;
-    private $image_height;
+    //private $image_width;
+    //private $image_height;
 
     private $section_columns;
     private $section_rows;
@@ -20,32 +19,20 @@
     private $image_resource;
 
     //  $data = (Associative Array) with the following keys: "area_x" => (Int), "area_y" => (Int), and "description" => (String)
-    //  $dir_n_file = (String) path/filename/extension of image
     //  $descriptions = (Array of Strings) of the defect descriptions
-    //  $image_resolution = (Associative Array) containing "height" (Int) and "width" (Int) that will resize the image
-    public function __construct($data, $dir_n_file, $descriptions, $image_resolution = array()) {
+    public function __construct($data, $descriptions) {
 
       clearstatcache();
-
-      if (!file_exists($dir_n_file))
-        die('Error file does not exist!: ' . $dir_n_file);
-
-      if (!$data)
-        die('Error no data selected!');
 
       //PHP GD library required to generate a scatter plot
       if (!in_array('gd', get_loaded_extensions()))
         die("Error libgd is not loaded");
 
+      if (!$data)
+        die('Error no data selected!');
+
       if (!$descriptions)
         die('Error no array of defect descriptions found');
-
-      //Location of file, filename, and extension
-      $this->full_path = $dir_n_file;
-
-      //Break the fully resolved path/filename/extension apart
-      //  into its distinct parts
-      $this->path_parts = pathinfo($this->full_path);
 
       $this->data = $data;
 
@@ -54,33 +41,6 @@
       //This allows us to keep a consistent color to defect 
       //  correspondence
       $this->descriptions = $descriptions;
-
-      //image preparation, possible rescaling
-      list($this->image_width, $this->image_height) = getimagesize($this->full_path);
-
-      //need to re-scale image
-      if (count($image_resolution) > 0) {
-        
-        if (!array_key_exists("width", $image_resolution)) {
-          $height = $image_resolution["height"];
-          $width = false;
-        } else if (!array_key_exists("height", $image_resolution)) {
-          $width = $image_resolution["width"];
-          $height = false;
-        } else {
-          $height = $image_resolution["height"];
-          $width = $image_resolution["width"];
-        }
-
-        $this->image_resource = $this->resizeImage($this->full_path, $width, $height);
-
-      } else {
-        $this->image_resource = imagecreatefromjpeg($this->full_path);
-      }
-
-      //set new dimensions
-      $this->image_width = imagesx($this->image_resource);
-      $this->image_height = imagesy($this->image_resource);
   
       //Probably not the best way to do this but the 
       //  color_ref is an associative array and we really need
@@ -101,16 +61,12 @@
 
     }
 
-    public function getImageResolution() {
-      return array("width" => $this->image_width, "height" => $this->image_height);
-    }
-
     //Takes the image, defect (x,y) positions and plots
     //  the defects as dots on the image
     //Also calculates the defects per unit
     //  if number of parts was included in the new instance
     //  of the class
-    public function getImage($scatterGrid = false) {
+    public function generateDefectImage($image_resource, $scatterGrid = false) {
 
       //Do we have data?
       if (count($this->data) > 0) {
@@ -124,11 +80,6 @@
 
           if (!$this->isAssoc($defect))
             continue;
-
-         /* echo $key . " <br />";
-          if ($key == 129) {
-            var_dump($defect);
-          }*/
 
           $color = $this->getColor("black"); 
 
@@ -174,12 +125,12 @@
           }
 
           //plot the defect point
-          imagefilledellipse($this->image_resource, 
+          imagefilledellipse($image_resource, 
                             $defect['area_x'], 
                             $defect['area_y'], 
                             8, 
                             8, 
-                            imagecolorallocate($this->image_resource, $color['red'], $color['green'], $color['blue']));
+                            imagecolorallocate($image_resource, $color['red'], $color['green'], $color['blue']));
 
 
         }
@@ -190,35 +141,39 @@
       } else {
 
         //error no data found
-        imagestring($this->image_resource, 
+        imagestring($image_resource, 
                     5, 
                     0, 
                     10, 
                     "ERROR LOADING PLOT DATA", 
-                    imagecolorallocate($this->image_resource, 255, 0, 0));
+                    imagecolorallocate($image_resource, 255, 0, 0));
 
       }
 
       //set text color to black and display total defects that displays
       //in the upper-left corner
-      $textcolor = imagecolorallocate($this->image_resource, 0, 0, 0);
-      imagestring($this->image_resource, 5, 0, 0 , count($this->data), $textcolor);
+      $textcolor = imagecolorallocate($image_resource, 0, 0, 0);
+      imagestring($image_resource, 5, 0, 0 , count($this->data), $textcolor);
 
-      //overlay the grid and totals by section
-      if ($scatterGrid)
-        $this->image_resource = $scatterGrid->displayGridAndTotals($this->image_resource, count($this->data));
+      return $image_resource;
+
+    }
+
+    public function imgToBase64($image_resource = false) {
+
+      if (get_resource_type($image_resource) !== "gd")
+        die("image_res is not a GD image resource.");
 
       //Turn on output buffering
       ob_start();
 
-        $test = imagejpeg($this->image_resource);
+      $test = imagejpeg($image_resource);
 
-        if (!$test) {
-          die('Image resource did not work!');
-        }
+      if (!$test) {
+        die('Image resource did not work!');
+      }
 
-        $image_data = ob_get_contents();
-
+      $image_data = ob_get_contents();
 
       //Turn off output buffering
       ob_end_clean();
@@ -226,40 +181,7 @@
       //Convert to base64 so inject inside an HTML image tag
       $img_base64 = base64_encode($image_data);
 
-      //Remove images created in memory
-      imagedestroy($this->image_resource);
-      //imagedestroy($this->image_resource_final);
-
       return $img_base64;
-
-    }
-
-    //Resize image to a fixed height and width
-    private function resizeImage($file, $new_width, $new_height) {
-
-      if (!$new_width && !$new_height)
-        die("Error resizeImage missing new height or width");
-
-      list($img_width, $img_height) = getimagesize($file);
-
-      $ratio = $img_width / $img_height;
-
-      //adjust width or height to match ratio and new width or height
-      if (!$new_width) {
-        //$new_width = ceil(abs($new_height - $img_height) * $ratio + $img_width);
-        $new_width = ceil($img_width * ($new_height / $img_height));
-      }
-
-      if (!$new_height) {
-        $new_height = ceil($img_height * ($new_width / $img_width));
-      }
-
-      $src = @imagecreatefromjpeg($file);
-      $dest = imagecreatetruecolor($new_width, $new_height);
-
-      imagecopyresampled($dest, $src, 0, 0, 0, 0, $new_width, $new_height, $img_width, $img_height);
-
-      return $dest;
 
     }
 
