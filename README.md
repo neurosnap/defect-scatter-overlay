@@ -1,4 +1,4 @@
-Nysus' Defect Collection Scatter Overlay
+Defect Collection Scatter Overlay
 ================
 
 The purpose of this utility is to apply defects as points (in x, y coordinates)
@@ -12,9 +12,9 @@ Once the defects have been logged as (x, y) coordinates on an image, we render t
 on the image using scatterImg(), which are color coded by defect type, across a wide variety of filters 
 (e.g. time, defect type, part number, shift, etc.).  We also allow the ability to filter by section.
 
-Sections are created, parsed, and overlayed by scatterGrid().  Sections are defined similar to how a 
+Sections are created, parsed, and overlayed onto the image.  Sections are defined similar to how a 
 table of data is defined: columns and rows.  Once the number of columns and rows are specified 
-as well as the image resolution, scatterGrid() does the rest of the leg-work, 
+as well as the image resolution, scatterImg() does the rest of the leg-work, 
 separating data by section as well as filtering data by section.
 
 #### Demo -- ./demo.php
