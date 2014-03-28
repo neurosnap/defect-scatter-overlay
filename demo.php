@@ -16,26 +16,23 @@ $columns = 5;
 $rows = 5;
 $num_parts = 1477;
 
-//$filter_selections = array(array("column" => 2, "row" => 2));
+//$filter_selections = array(array("column" => 2, "row" => 2), array("column" => 4), array("row" => 3));
 $filter_selections = array();
 
 //include classes
 require_once(implode(DIRECTORY_SEPARATOR, array($root, "scatterImg.0.0.1.php")));
-require_once(implode(DIRECTORY_SEPARATOR, array($root, "scatterGrid.0.0.1.php")));
 
 //Resize image
 require_once(implode(DIRECTORY_SEPARATOR, array($root, "gen", "resizeImage.php")));
 $image_resource = resizeImage(imagecreatefromjpeg($image_location), false, 450);
-$img_width = imagesx($image_resource);
-$img_height = imagesy($image_resource);
 
-$scImg = new scatterImg($data, $descriptions);
-$scGrid = new scatterGrid($img_width, $img_height, $data, $columns, $rows, $filter_selections);
+$scImg = new scatterImg($image_resource, $data, $descriptions, 
+						$columns, $rows, $filter_selections);
 
-$image_resource = $scImg->generateDefectImage($image_resource, $scGrid);
-$image_resource = $scGrid->displayGridAndTotals($image_resource, $num_parts);
+$scImg->generateDefectImage(true);
+$scImg->displayGridAndTotals($num_parts);
    
-$res = '<div><img style="float: left;" src="data:image/jpeg;charset=utf-8;base64,' . $scImg->imgToBase64($image_resource) . '">';
+$res = '<div><img style="float: left;" src="data:image/jpeg;charset=utf-8;base64,' . $scImg->imgToBase64() . '">';
 
 $color_map = $scImg->getFinalColorMap();
 
